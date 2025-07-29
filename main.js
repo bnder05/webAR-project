@@ -1,99 +1,68 @@
-import 'mind-ar/dist/mindar-image-three.prod.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-let mixer, idleAction, openAction, model;
-const video = document.getElementById('ar-video');
-const yt = document.getElementById('yt-video');
-let videoVisible = false;
-let useYoutube = false;
-let youtubeURL = 'https://www.youtube.com/embed/mwNY_vx1R2M?autoplay=1&controls=1'; // رابط يوتيوب المطلوب
+const videoElement = document.getElementById("video-box");
 
 const start = async () => {
   const mindarThree = new window.MINDAR.IMAGE.MindARThree({
     container: document.querySelector("#ar-container"),
-    imageTargetSrc: 'targets.mind', // المسار الصحيح من public
+    imageTargetSrc: "targets.mind",
   });
+
   const { renderer, scene, camera } = mindarThree;
 
-  // تحميل الموديل
+  // إنشاء مجموعة مرتبطة بالصورة
+  const anchor = mindarThree.addAnchor(0);
+
+  let mixer;
   const loader = new GLTFLoader();
-  loader.load('model.glb', (gltf) => {
+  let model;
+  let idleAction, openAction;
+
+  loader.load("model.glb", (gltf) => {
     model = gltf.scene;
-    scene.add(model);
+    anchor.group.add(model);
+
     mixer = new THREE.AnimationMixer(model);
-    idleAction = mixer.clipAction(gltf.animations.find(a => a.name.toLowerCase().includes('idle')));
-    openAction = mixer.clipAction(gltf.animations.find(a => a.name.toLowerCase().includes('open')));
-    idleAction.loop = THREE.LoopRepeat;
-    openAction.loop = THREE.LoopOnce;
-    openAction.clampWhenFinished = true;
+
+    const animations = gltf.animations;
+    idleAction = mixer.clipAction(animations.find(a => a.name.toLowerCase().includes("idle")));
+    openAction = mixer.clipAction(animations.find(a => a.name.toLowerCase().includes("open")));
+
     idleAction.play();
-    // إظهار الفيديو مع Idle (حسب المصدر)
-    // لا تظهر الفيديو إلا عند اكتشاف التتبع
+    openAction.clampWhenFinished = true;
+    openAction.loop = THREE.LoopOnce;
   });
 
-  // زر التفاعل
-  document.getElementById('ar-button').onclick = () => {
+  // عند الضغط على الموديل
+  renderer.domElement.addEventListener('pointerdown', () => {
     if (openAction && idleAction) {
       idleAction.stop();
       openAction.reset().play();
       openAction.onFinished = () => {
-        idleAction.play();
+        idleAction.play(); // يرجع للوضع الطبيعي بعد الانتهاء إذا رغبت
       };
-      playVideo();
-    }
-  };
-
-  // تفاعل مع الموديل
-  renderer.domElement.addEventListener('pointerdown', (event) => {
-    if (openAction && idleAction) {
-      idleAction.stop();
-      openAction.reset().play();
-      openAction.onFinished = () => {
-        idleAction.play();
-      };
-      playVideo();
+      // تشغيل الفيديو
+      videoElement.style.display = "block";
+      videoElement.currentTime = 0;
+      videoElement.play();
     }
   });
 
-  // أزرار اختيار المصدر
-  document.getElementById('use-local').onclick = () => {
-    useYoutube = false;
+  // إظهار الفيديو فقط عندما يتم كشف الهدف
+  anchor.onTargetFound = () => {
+    if (videoElement) videoElement.style.display = "none";
   };
-  document.getElementById('use-yt').onclick = () => {
-    useYoutube = true;
+  anchor.onTargetLost = () => {
+    if (videoElement) {
+      videoElement.pause();
+      videoElement.style.display = "none";
+    }
   };
-
-  // إظهار الفيديو فقط عند اكتشاف التتبع
-  mindarThree.addEventListener('targetFound', () => {
-    if (useYoutube) {
-      yt.src = youtubeURL;
-      yt.style.display = 'block';
-      video.style.display = 'none';
-    } else {
-      yt.style.display = 'none';
-      video.style.display = 'block';
-    }
-    videoVisible = true;
-  });
-  mindarThree.addEventListener('targetLost', () => {
-    yt.style.display = 'none';
-    video.style.display = 'none';
-    videoVisible = false;
-  });
-
-  function playVideo() {
-    if (useYoutube) {
-      yt.src = youtubeURL; // إعادة التحميل
-    } else {
-      video.currentTime = 0;
-      video.play();
-    }
-  }
 
   // حلقة التحديث
   renderer.setAnimationLoop(() => {
-    if (mixer) mixer.update(1/60);
+    if (mixer) mixer.update(1 / 60);
     renderer.render(scene, camera);
   });
 

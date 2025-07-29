@@ -1,26 +1,23 @@
 <!DOCTYPE html>
-<html lang="ar">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Web AR صندوق تفاعلي</title>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.7/dist/mindar-image-three.prod.js"></script>
-  <style>
-    body { margin: 0; overflow: hidden; }
-    #ar-button { position: absolute; top: 20px; right: 20px; z-index: 10; padding: 10px 20px; font-size: 18px; }
-  </style>
-</head>
-<body>
-  <button id="ar-button">افتح الصندوق</button>
-  <div id="ar-container"></div>
-  <video id="ar-video" src="video.mp4" style="display:none; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:20; max-width:80vw; max-height:40vh; background:#000;" controls></video>
-  <iframe id="yt-video" style="display:none; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:20; max-width:80vw; max-height:40vh; background:#000;" allowfullscreen allow="autoplay"></iframe>
-  <div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); z-index:30;">
-    <button id="use-local">تشغيل الفيديو من الجهاز</button>
-    <button id="use-yt">تشغيل من يوتيوب</button>
-  </div>
-  <script type="module" src="/main.js"></script>
-</body>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Web AR A-Frame</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>body { margin: 0; overflow: hidden; }</style>
+  </head>
+  <body>
+    <a-scene mindar-image="imageTargetSrc: targets.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+      <a-assets>
+        <img id="card" src="card.png" />
+        <a-asset-item id="avatarModel" src="model.glb"></a-asset-item>
+      </a-assets>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-plane src="#card" position="0 0 0" height="0.552" width="1" rotation="0 0 0"></a-plane>
+        <a-gltf-model rotation="0 0 0" position="0 0 0.1" scale="0.005 0.005 0.005" src="#avatarModel"></a-gltf-model>
+      </a-entity>
+    </a-scene>
+  </body>
 </html>

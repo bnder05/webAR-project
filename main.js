@@ -12,13 +12,13 @@ let youtubeURL = 'https://www.youtube.com/embed/mwNY_vx1R2M?autoplay=1&controls=
 const start = async () => {
   const mindarThree = new window.MINDAR.IMAGE.MindARThree({
     container: document.querySelector("#ar-container"),
-    imageTargetSrc: './public/targets.mind', // تأكد من اسم الملف الصحيح
+    imageTargetSrc: 'targets.mind', // المسار الصحيح من public
   });
   const { renderer, scene, camera } = mindarThree;
 
   // تحميل الموديل
   const loader = new GLTFLoader();
-  loader.load('public/model.glb', (gltf) => {
+  loader.load('model.glb', (gltf) => {
     model = gltf.scene;
     scene.add(model);
     mixer = new THREE.AnimationMixer(model);

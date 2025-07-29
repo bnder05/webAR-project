@@ -7,18 +7,18 @@ const video = document.getElementById('ar-video');
 const yt = document.getElementById('yt-video');
 let videoVisible = false;
 let useYoutube = false;
-let youtubeURL = 'https://www.youtube.com/embed/YOUR_VIDEO_ID?autoplay=1&controls=1'; // عدل الرابط عند الحاجة
+let youtubeURL = 'https://www.youtube.com/embed/mwNY_vx1R2M?autoplay=1&controls=1'; // رابط يوتيوب المطلوب
 
 const start = async () => {
   const mindarThree = new window.MINDAR.IMAGE.MindARThree({
     container: document.querySelector("#ar-container"),
-    imageTargetSrc: './public/target.mind', // ضع ملف target المناسب هنا
+    imageTargetSrc: './public/targets.mind', // تأكد من اسم الملف الصحيح
   });
   const { renderer, scene, camera } = mindarThree;
 
   // تحميل الموديل
   const loader = new GLTFLoader();
-  loader.load('./public/model.glb', (gltf) => {
+  loader.load('public/model.glb', (gltf) => {
     model = gltf.scene;
     scene.add(model);
     mixer = new THREE.AnimationMixer(model);
@@ -29,7 +29,7 @@ const start = async () => {
     openAction.clampWhenFinished = true;
     idleAction.play();
     // إظهار الفيديو مع Idle (حسب المصدر)
-    showVideo();
+    // لا تظهر الفيديو إلا عند اكتشاف التتبع
   });
 
   // زر التفاعل
@@ -40,7 +40,6 @@ const start = async () => {
       openAction.onFinished = () => {
         idleAction.play();
       };
-      // تشغيل الفيديو عند الضغط
       playVideo();
     }
   };
@@ -53,7 +52,6 @@ const start = async () => {
       openAction.onFinished = () => {
         idleAction.play();
       };
-      // تشغيل الفيديو عند الضغط
       playVideo();
     }
   });
@@ -61,14 +59,13 @@ const start = async () => {
   // أزرار اختيار المصدر
   document.getElementById('use-local').onclick = () => {
     useYoutube = false;
-    showVideo();
   };
   document.getElementById('use-yt').onclick = () => {
     useYoutube = true;
-    showVideo();
   };
 
-  function showVideo() {
+  // إظهار الفيديو فقط عند اكتشاف التتبع
+  mindarThree.addEventListener('targetFound', () => {
     if (useYoutube) {
       yt.src = youtubeURL;
       yt.style.display = 'block';
@@ -78,11 +75,15 @@ const start = async () => {
       video.style.display = 'block';
     }
     videoVisible = true;
-  }
+  });
+  mindarThree.addEventListener('targetLost', () => {
+    yt.style.display = 'none';
+    video.style.display = 'none';
+    videoVisible = false;
+  });
 
   function playVideo() {
     if (useYoutube) {
-      yt.contentWindow?.postMessage('play', '*'); // بعض المتصفحات تدعم ذلك
       yt.src = youtubeURL; // إعادة التحميل
     } else {
       video.currentTime = 0;

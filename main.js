@@ -1,72 +1,113 @@
+import 'mind-ar/dist/mindar-image-three.prod.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-const videoElement = document.getElementById("video-box");
+let mixer, idleAction, openAction, model;
+const video = document.getElementById('ar-video');
+const yt = document.getElementById('yt-video');
+let videoVisible = false;
+let useYoutube = false;
+let youtubeURL = 'https://www.youtube.com/embed/mwNY_vx1R2M?autoplay=1&controls=1'; // رابط يوتيوب المطلوب
 
 const start = async () => {
   const mindarThree = new window.MINDAR.IMAGE.MindARThree({
     container: document.querySelector("#ar-container"),
-    imageTargetSrc: "targets.mind",
+    imageTargetSrc: 'targets.mind', // المسار الصحيح من public
   });
-
   const { renderer, scene, camera } = mindarThree;
 
-  // إنشاء مجموعة مرتبطة بالصورة
-  const anchor = mindarThree.addAnchor(0);
-
-  let mixer;
+  // تحميل الموديل
   const loader = new GLTFLoader();
-  let model;
-  let idleAction, openAction;
-
-  loader.load("model.glb", (gltf) => {
+  let modelLoaded = false;
+  loader.load('model.glb', (gltf) => {
     model = gltf.scene;
-    anchor.group.add(model);
-
+    scene.add(model);
     mixer = new THREE.AnimationMixer(model);
-
-    const animations = gltf.animations;
-    idleAction = mixer.clipAction(animations.find(a => a.name.toLowerCase().includes("idle")));
-    openAction = mixer.clipAction(animations.find(a => a.name.toLowerCase().includes("open")));
-
-    idleAction.play();
-    openAction.clampWhenFinished = true;
+    idleAction = mixer.clipAction(gltf.animations.find(a => a.name.toLowerCase().includes('idle')));
+    openAction = mixer.clipAction(gltf.animations.find(a => a.name.toLowerCase().includes('open')));
+    idleAction.loop = THREE.LoopRepeat;
     openAction.loop = THREE.LoopOnce;
+    openAction.clampWhenFinished = true;
+    idleAction.play();
+    modelLoaded = true;
+  }, undefined, (err) => {
+    alert('تعذر تحميل الموديل model.glb. تأكد من وجود الملف في public.');
   });
 
-  // عند الضغط على الموديل
-  renderer.domElement.addEventListener('pointerdown', () => {
+  // زر التفاعل
+  document.getElementById('ar-button').onclick = () => {
     if (openAction && idleAction) {
       idleAction.stop();
       openAction.reset().play();
       openAction.onFinished = () => {
-        idleAction.play(); // يرجع للوضع الطبيعي بعد الانتهاء إذا رغبت
+        idleAction.play();
       };
-      // تشغيل الفيديو
-      videoElement.style.display = "block";
-      videoElement.currentTime = 0;
-      videoElement.play();
+      playVideo();
+    }
+  };
+
+  // تفاعل مع الموديل
+  renderer.domElement.addEventListener('pointerdown', (event) => {
+    if (openAction && idleAction) {
+      idleAction.stop();
+      openAction.reset().play();
+      openAction.onFinished = () => {
+        idleAction.play();
+      };
+      playVideo();
     }
   });
 
-  // إظهار الفيديو فقط عندما يتم كشف الهدف
-  anchor.onTargetFound = () => {
-    if (videoElement) videoElement.style.display = "none";
+  // أزرار اختيار المصدر
+  document.getElementById('use-local').onclick = () => {
+    useYoutube = false;
   };
-  anchor.onTargetLost = () => {
-    if (videoElement) {
-      videoElement.pause();
-      videoElement.style.display = "none";
+  document.getElementById('use-yt').onclick = () => {
+    useYoutube = true;
+  };
+
+  // إظهار الفيديو فقط عند اكتشاف التتبع
+  mindarThree.addEventListener('targetFound', () => {
+    if (!modelLoaded) {
+      alert('لم يتم تحميل الموديل بعد.');
+      return;
     }
-  };
+    if (useYoutube) {
+      yt.src = youtubeURL;
+      yt.style.display = 'block';
+      video.style.display = 'none';
+    } else {
+      yt.style.display = 'none';
+      video.style.display = 'block';
+    }
+    videoVisible = true;
+  });
+  mindarThree.addEventListener('targetLost', () => {
+    yt.style.display = 'none';
+    video.style.display = 'none';
+    videoVisible = false;
+  });
+
+  function playVideo() {
+    if (useYoutube) {
+      yt.src = youtubeURL; // إعادة التحميل
+    } else {
+      video.currentTime = 0;
+      video.play();
+    }
+  }
 
   // حلقة التحديث
   renderer.setAnimationLoop(() => {
-    if (mixer) mixer.update(1 / 60);
+    if (mixer) mixer.update(1/60);
     renderer.render(scene, camera);
   });
 
-  await mindarThree.start();
+  try {
+    await mindarThree.start();
+  } catch (e) {
+    alert('تعذر تحميل ملف التتبع targets.mind أو الكاميرا غير مفعلة.');
+  }
 };
 
 start();

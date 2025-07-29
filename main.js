@@ -1,66 +1,67 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-const videoElement = document.getElementById("video-box");
-
 const start = async () => {
   const mindarThree = new window.MINDAR.IMAGE.MindARThree({
     container: document.querySelector("#ar-container"),
-    imageTargetSrc: "targets.mind",
+    imageTargetSrc: "./targets.mind",
   });
 
   const { renderer, scene, camera } = mindarThree;
-
-  // إنشاء مجموعة مرتبطة بالصورة
   const anchor = mindarThree.addAnchor(0);
 
   let mixer;
-  const loader = new GLTFLoader();
   let model;
   let idleAction, openAction;
 
-  loader.load("model.glb", (gltf) => {
+  // تحميل الموديل
+  const loader = new GLTFLoader();
+  loader.load("./model.glb", (gltf) => {
     model = gltf.scene;
     anchor.group.add(model);
 
     mixer = new THREE.AnimationMixer(model);
-
-    const animations = gltf.animations;
-    idleAction = mixer.clipAction(animations.find(a => a.name.toLowerCase().includes("idle")));
-    openAction = mixer.clipAction(animations.find(a => a.name.toLowerCase().includes("open")));
+    idleAction = mixer.clipAction(gltf.animations.find(a => a.name.toLowerCase().includes("idle")));
+    openAction = mixer.clipAction(gltf.animations.find(a => a.name.toLowerCase().includes("open")));
 
     idleAction.play();
-    openAction.clampWhenFinished = true;
     openAction.loop = THREE.LoopOnce;
+    openAction.clampWhenFinished = true;
   });
 
-  // عند الضغط على الموديل
-  renderer.domElement.addEventListener('pointerdown', () => {
+  // إعداد الفيديو كنسيج داخل Plane
+  const video = document.createElement("video");
+  video.src = "./video.mp4";
+  video.crossOrigin = "anonymous";
+  video.loop = false;
+  video.muted = true; // مهم لجعله يعمل على المتصفح بدون تدخل
+  video.setAttribute("playsinline", "true");
+
+  const texture = new THREE.VideoTexture(video);
+  const videoPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.5, 0.9),
+    new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide })
+  );
+  videoPlane.position.set(0, 1.2, 0); // فوق الموديل
+  anchor.group.add(videoPlane);
+  videoPlane.visible = false;
+
+  // التفاعل عند الضغط
+  renderer.domElement.addEventListener("click", () => {
     if (openAction && idleAction) {
       idleAction.stop();
       openAction.reset().play();
-      openAction.onFinished = () => {
-        idleAction.play(); // يرجع للوضع الطبيعي بعد الانتهاء إذا رغبت
-      };
-      // تشغيل الفيديو
-      videoElement.style.display = "block";
-      videoElement.currentTime = 0;
-      videoElement.play();
+      video.currentTime = 0;
+      video.play();
+      videoPlane.visible = true;
     }
   });
 
-  // إظهار الفيديو فقط عندما يتم كشف الهدف
-  anchor.onTargetFound = () => {
-    if (videoElement) videoElement.style.display = "none";
-  };
   anchor.onTargetLost = () => {
-    if (videoElement) {
-      videoElement.pause();
-      videoElement.style.display = "none";
-    }
+    video.pause();
+    videoPlane.visible = false;
   };
 
-  // حلقة التحديث
   renderer.setAnimationLoop(() => {
     if (mixer) mixer.update(1 / 60);
     renderer.render(scene, camera);
